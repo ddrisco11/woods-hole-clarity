@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "npx tsx server.ts",
-    "server:dev": "npx tsx watch server.ts"
+    "server:dev": "npx tsx watch server.ts",
+    "start": "node server.js",
+    "start:simple": "node server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
