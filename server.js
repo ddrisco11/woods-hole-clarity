@@ -1,9 +1,11 @@
 // Simple JavaScript version for deployment
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const { z } = require('zod');
-const fetch = require('node-fetch');
+import dotenv from 'dotenv';
+import express from 'express';
+import cors from 'cors';
+import { z } from 'zod';
+import fetch from 'node-fetch';
+
+dotenv.config();
 
 // Load environment variables
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || "";
@@ -63,4 +65,4 @@ app.listen(PORT, () => {
   console.log(`Health check: http://localhost:${PORT}/health`);
 });
 
-module.exports = app;
+export default app;
