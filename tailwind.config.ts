@@ -47,6 +47,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        clarity: {
+          excellent: "hsl(var(--clarity-excellent))",
+          good: "hsl(var(--clarity-good))",
+          fair: "hsl(var(--clarity-fair))",
+          poor: "hsl(var(--clarity-poor))",
+          "very-poor": "hsl(var(--clarity-very-poor))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -57,6 +64,21 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      backgroundImage: {
+        "gradient-ocean": "var(--gradient-ocean)",
+        "gradient-clarity": "var(--gradient-clarity)",
+        "gradient-depth": "var(--gradient-depth)",
+        "gradient-surface": "var(--gradient-surface)",
+      },
+      boxShadow: {
+        "depth": "var(--shadow-depth)",
+        "surface": "var(--shadow-surface)",
+        "glow": "var(--shadow-glow)",
+      },
+      transitionTimingFunction: {
+        "marine": "var(--transition-marine)",
+        "wave": "var(--transition-wave)",
       },
       borderRadius: {
         lg: "var(--radius)",

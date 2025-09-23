@@ -2,41 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* Marine clarity app design system - ocean inspired palette
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Ocean-themed background palette */
+    --background: 210 25% 97%;
+    --foreground: 200 15% 15%;
 
+    /* Marine card system */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 200 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 200 15% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Deep ocean primary */
+    --primary: 200 95% 25%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Shallow water secondary */
+    --secondary: 185 30% 90%;
+    --secondary-foreground: 200 15% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted ocean tones */
+    --muted: 185 20% 92%;
+    --muted-foreground: 200 8% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Coral accent */
+    --accent: 175 60% 85%;
+    --accent-foreground: 200 15% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Warning red for poor clarity */
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Subtle marine borders */
+    --border: 185 25% 88%;
+    --input: 185 25% 88%;
+    --ring: 200 95% 35%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Custom marine clarity colors */
+    --clarity-excellent: 140 70% 45%;
+    --clarity-good: 120 50% 55%;
+    --clarity-fair: 45 90% 60%;
+    --clarity-poor: 15 85% 55%;
+    --clarity-very-poor: 0 75% 50%;
+
+    /* Marine gradients */
+    --gradient-ocean: linear-gradient(135deg, hsl(200 95% 35%), hsl(185 80% 45%));
+    --gradient-clarity: linear-gradient(90deg, hsl(140 70% 45%), hsl(45 90% 60%), hsl(0 75% 50%));
+    --gradient-depth: linear-gradient(180deg, hsl(185 60% 85%), hsl(200 95% 25%));
+    --gradient-surface: linear-gradient(135deg, hsl(185 40% 95%), hsl(200 30% 88%));
+
+    /* Marine shadows */
+    --shadow-depth: 0 8px 32px -8px hsl(200 95% 25% / 0.2);
+    --shadow-surface: 0 4px 16px -4px hsl(200 50% 50% / 0.1);
+    --shadow-glow: 0 0 24px hsl(185 80% 60% / 0.3);
+
+    /* Animation easing */
+    --transition-marine: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-wave: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
     --sidebar-background: 0 0% 98%;
 
