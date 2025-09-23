@@ -51,11 +51,88 @@ app.get('/', (req, res) => {
   });
 });
 
+// Sites endpoint
+app.get('/sites', (req, res) => {
+  res.json([
+    {
+      id: "stoney-beach",
+      name: "Stoney Beach",
+      lat: 41.5297,
+      lon: -70.6609,
+      shorelineBearingTowardShore: 315,
+      exposure: 0.35,
+      notes: "Sheltered cove; clarity often best near high slack tide"
+    },
+    {
+      id: "devils-foot",
+      name: "Devil's Foot Island",
+      lat: 41.5156,
+      lon: -70.6445,
+      shorelineBearingTowardShore: 90,
+      exposure: 0.7,
+      notes: "Exposed site; good visibility when winds are offshore (westerly)"
+    },
+    {
+      id: "great-harbor",
+      name: "Great Harbor",
+      lat: 41.5234,
+      lon: -70.6712,
+      shorelineBearingTowardShore: 45,
+      exposure: 0.25,
+      notes: "Protected harbor; can be murky during rain runoff"
+    },
+    {
+      id: "nonamesset-side",
+      name: "Nonamesset Island Side",
+      lat: 41.5089,
+      lon: -70.6234,
+      shorelineBearingTowardShore: 140,
+      exposure: 0.6,
+      notes: "South-facing; best in northerly winds and calm seas"
+    }
+  ]);
+});
+
+// Now endpoint (simplified)
+app.get('/now', (req, res) => {
+  res.json({
+    generatedAt: new Date().toISOString(),
+    bestSiteNow: { siteId: "stoney-beach", score: 75, reason: "Good conditions" },
+    sites: [
+      {
+        siteId: "stoney-beach",
+        currentScore: 75,
+        trendNext6h: "flat",
+        tidePhase: "slack",
+        wind: null,
+        rain: null,
+        waves: null,
+        bestWindowToday: null
+      }
+    ],
+    degraded: false
+  });
+});
+
+// Forecast endpoint (simplified)
+app.get('/forecast', (req, res) => {
+  const hours = Math.min(parseInt(req.query.hours) || 48, 72);
+  res.json({
+    hours,
+    sites: {
+      "stoney-beach": [],
+      "devils-foot": [],
+      "great-harbor": [],
+      "nonamesset-side": []
+    }
+  });
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
-    message: 'Check /health for server status'
+    message: 'Available endpoints: /, /health, /sites, /now, /forecast'
   });
 });
 
