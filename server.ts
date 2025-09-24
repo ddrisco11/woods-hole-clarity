@@ -11,8 +11,12 @@
  * 
  * Libraries: express, cors, zod, node-fetch, tsx (for TypeScript execution)
  * 
- * Data Sources: NOAA CO-OPS (tides), NDBC (wind), OpenWeather (rain), Stormglass (waves)
+ * Data Sources: NOAA CO-OPS (tides), NDBC (wind), OpenWeather (rain - FREE PLAN), Stormglass (waves)
  * Algorithm: Weighted penalty system scoring clarity 0-100 based on environmental factors
+ * 
+ * FREE PLAN COMPLIANCE:
+ * - OpenWeather: Uses Current Weather API only (no hourly/daily forecasts)
+ * - Rate limiting: 50 req/min (under 60/min limit), 1 call per hour refresh cycle
  */
 
 import express from 'express';
@@ -47,7 +51,7 @@ const DEFAULT_COORDS = { lat: 41.523, lon: -70.671 }; // Woods Hole center
 
 // SERVER CONFIGURATION - Can be overridden by environment variables
 const PORT = parseInt(process.env.PORT || "5056");
-const REFRESH_MINUTES = parseInt(process.env.REFRESH_MINUTES || "60"); // How often to refresh data from sources
+const REFRESH_MINUTES = parseInt(process.env.REFRESH_MINUTES || "60"); // How often to refresh data from sources (60min = 1 OpenWeather call/hour, well within free plan limits)
 
 // FORECAST SETTINGS
 const MAX_FORECAST_HOURS = 72;
@@ -56,6 +60,9 @@ const TIDE_HISTORY_HOURS = 36; // How far back to fetch for derivatives
 // STORMGLASS RATE LIMITING (10 requests per day limit) - Can be overridden by environment variables
 const STORMGLASS_CACHE_HOURS = parseInt(process.env.STORMGLASS_CACHE_HOURS || "3"); // Cache wave data for 3 hours (8 requests/day max)
 const STORMGLASS_MAX_DAILY_REQUESTS = parseInt(process.env.STORMGLASS_MAX_DAILY_REQUESTS || "8"); // Conservative limit to stay under 10/day
+
+// OPENWEATHER RATE LIMITING (60 requests per minute limit for free plan)
+const OPENWEATHER_MAX_REQUESTS_PER_MINUTE = parseInt(process.env.OPENWEATHER_MAX_REQUESTS_PER_MINUTE || "50"); // Conservative limit to stay under 60/minute
 
 // ============================================================================
 // TYPES & SCHEMAS
@@ -257,6 +264,17 @@ let stormglassCache: StormglassCache = {
   lastResetDate: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
 };
 
+// OpenWeather rate limiting cache
+interface OpenWeatherCache {
+  requestsThisMinute: number;
+  lastResetMinute: string; // Track minute-based reset (YYYY-MM-DDTHH:MM format)
+}
+
+let openWeatherCache: OpenWeatherCache = {
+  requestsThisMinute: 0,
+  lastResetMinute: new Date().toISOString().slice(0, 16) // YYYY-MM-DDTHH:MM format
+};
+
 // ============================================================================
 // UTILITIES
 // ============================================================================
@@ -348,6 +366,21 @@ function isStormglassCacheValid(): boolean {
 function canFetchStormglassData(): boolean {
   resetDailyRequestCountIfNeeded();
   return stormglassCache.requestsToday < STORMGLASS_MAX_DAILY_REQUESTS;
+}
+
+// OpenWeather rate limiting utilities
+function resetMinuteRequestCountIfNeeded(): void {
+  const currentMinute = new Date().toISOString().slice(0, 16);
+  if (openWeatherCache.lastResetMinute !== currentMinute) {
+    openWeatherCache.requestsThisMinute = 0;
+    openWeatherCache.lastResetMinute = currentMinute;
+    console.log('OpenWeather minute request count reset');
+  }
+}
+
+function canFetchOpenWeatherData(): boolean {
+  resetMinuteRequestCountIfNeeded();
+  return openWeatherCache.requestsThisMinute < OPENWEATHER_MAX_REQUESTS_PER_MINUTE;
 }
 
 // ============================================================================
@@ -516,8 +549,8 @@ async function fetchWindData(): Promise<WindData | null> {
   try {
     // Try multiple NDBC endpoints for better reliability
     const urls = [
-      `${NDBC_BASE}/data/latest_obs/${NDBC_STATION}.txt`,
-      `${NDBC_BASE}/data/realtime2/${NDBC_STATION}.txt`
+      `${NDBC_BASE}/data/realtime2/${NDBC_STATION}.txt`,
+      `${NDBC_BASE}/data/latest_obs/${NDBC_STATION}.txt`
     ];
     
     let response;
@@ -591,8 +624,9 @@ async function fetchWindData(): Promise<WindData | null> {
 }
 
 /**
- * Fetch OpenWeather precipitation data
- * Returns 72-hour precipitation summary and hourly breakdown
+ * Fetch OpenWeather precipitation data (FREE PLAN COMPATIBLE)
+ * Uses Current Weather API only - no hourly/daily forecasts available in free plan
+ * Returns current precipitation data only
  */
 async function fetchPrecipitationData(): Promise<PrecipData | null> {
   if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY.trim() === "") {
@@ -600,41 +634,51 @@ async function fetchPrecipitationData(): Promise<PrecipData | null> {
     return null;
   }
 
+  // Check rate limiting (60 requests per minute for free plan)
+  if (!canFetchOpenWeatherData()) {
+    console.warn(`OpenWeather rate limit reached (${openWeatherCache.requestsThisMinute}/${OPENWEATHER_MAX_REQUESTS_PER_MINUTE} requests this minute). Skipping request.`);
+    return null;
+  }
+
   try {
-    // Use the free 2.5 API instead of 3.0 which requires subscription
-    const url = `https://api.openweathermap.org/data/2.5/onecall?` + new URLSearchParams({
+    console.log(`Fetching OpenWeather data (request ${openWeatherCache.requestsThisMinute + 1}/${OPENWEATHER_MAX_REQUESTS_PER_MINUTE} this minute)`);
+    
+    // Use Current Weather API (free plan compatible)
+    // Note: Free plan does NOT include hourly/daily forecasts or historical data
+    const url = `https://api.openweathermap.org/data/2.5/weather?` + new URLSearchParams({
       lat: DEFAULT_COORDS.lat.toString(),
       lon: DEFAULT_COORDS.lon.toString(),
       appid: OPENWEATHER_API_KEY,
-      units: 'metric',
-      exclude: 'minutely,alerts' // Reduce response size
+      units: 'metric'
     });
 
     const response = await fetch(url);
+    
+    // Increment request counter immediately after making request
+    openWeatherCache.requestsThisMinute++;
+    
     if (!response.ok) {
       throw new Error(`OpenWeather API error: ${response.status}`);
     }
 
     const data = await response.json() as any;
 
-    let total72h = 0;
-    const windowed: { [isoHour: string]: number } = {};
+    // Free plan only provides current conditions, not historical or forecast data
+    // We can only get current rain/snow if it's actively happening
+    const currentRain = data.rain?.['1h'] || data.rain?.['3h'] || 0;
+    const currentSnow = data.snow?.['1h'] || data.snow?.['3h'] || 0;
+    const currentPrecip = currentRain + currentSnow;
 
-    // Sum hourly precipitation from last 48 hours (if available)
-    if (data.hourly && Array.isArray(data.hourly)) {
-      for (const hour of data.hourly.slice(0, 72)) {
-        const timestamp = new Date(hour.dt * 1000).toISOString();
-        const rain = hour.rain?.['1h'] || 0;
-        const snow = hour.snow?.['1h'] || 0;
-        const totalMm = rain + snow;
-        
-        windowed[timestamp] = totalMm;
-        total72h += totalMm;
-      }
-    }
+    // Since we can't get 72h history with free plan, we'll use a simplified approach
+    // This is a limitation of the free plan - we can only see current precipitation
+    const windowed: { [isoHour: string]: number } = {};
+    const currentTime = new Date().toISOString();
+    windowed[currentTime] = currentPrecip;
+
+    console.log(`OpenWeather (FREE PLAN): Current precipitation: ${currentPrecip}mm`);
 
     return {
-      last72h_mm: total72h,
+      last72h_mm: currentPrecip, // Limited to current conditions only
       windowed_mm: windowed
     };
 
@@ -912,12 +956,20 @@ app.use((req, res, next) => {
 
 app.get('/health', (req, res) => {
   resetDailyRequestCountIfNeeded(); // Update daily counter
+  resetMinuteRequestCountIfNeeded(); // Update minute counter
   
   res.json({
     ok: true,
     lastRefreshedAt: cache.lastRefreshedAt,
     degraded: cache.degraded,
     sources: cache.sources,
+    openweather: {
+      enabled: !!OPENWEATHER_API_KEY && OPENWEATHER_API_KEY.trim() !== "",
+      requestsThisMinute: openWeatherCache.requestsThisMinute,
+      maxRequestsPerMinute: OPENWEATHER_MAX_REQUESTS_PER_MINUTE,
+      lastResetMinute: openWeatherCache.lastResetMinute,
+      freePlanLimitations: "Current weather only - no hourly/daily forecasts or historical data"
+    },
     stormglass: {
       enabled: !!STORMGLASS_API_KEY && STORMGLASS_API_KEY.trim() !== "",
       requestsToday: stormglassCache.requestsToday,
@@ -1338,7 +1390,8 @@ async function startServer(): Promise<void> {
     console.log('Data Sources:');
     console.log(`  NOAA CO-OPS (tides): ${COOPS_STATION} - ${NOAA_COOPS_BASE}`);
     console.log(`  NDBC (wind): ${NDBC_STATION} - ${NDBC_BASE}`);
-    console.log(`  OpenWeather (rain): ${OPENWEATHER_API_KEY.trim() !== '' ? 'ENABLED' : 'DISABLED - SET OPENWEATHER_API_KEY'}`);
+    const openWeatherEnabled = OPENWEATHER_API_KEY.trim() !== '';
+    console.log(`  OpenWeather (rain): ${openWeatherEnabled ? `ENABLED (FREE PLAN - ${OPENWEATHER_MAX_REQUESTS_PER_MINUTE} req/min, current weather only)` : 'DISABLED - SET OPENWEATHER_API_KEY'}`);
     const stormglassEnabled = STORMGLASS_API_KEY.trim() !== '' && STORMGLASS_API_KEY;
     console.log(`  Stormglass (waves): ${stormglassEnabled ? `ENABLED (${STORMGLASS_MAX_DAILY_REQUESTS} req/day, ${STORMGLASS_CACHE_HOURS}h cache)` : 'DISABLED'}`);
     console.log('');
