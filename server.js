@@ -22,6 +22,31 @@ console.log('Environment:', {
   ADMIN_SECRET: !!ADMIN_SECRET
 });
 
+// Test API endpoints on startup
+async function testAPIs() {
+  console.log('Testing API endpoints...');
+  
+  // Test OpenWeather
+  if (OPENWEATHER_API_KEY) {
+    try {
+      const owUrl = `https://api.openweathermap.org/data/2.5/onecall?lat=41.523&lon=-70.671&appid=${OPENWEATHER_API_KEY}&units=metric&exclude=minutely,alerts`;
+      const owResponse = await fetch(owUrl);
+      console.log(`OpenWeather API: ${owResponse.ok ? 'OK' : 'FAILED'} (${owResponse.status})`);
+    } catch (error) {
+      console.log('OpenWeather API: ERROR -', error.message);
+    }
+  }
+  
+  // Test NDBC
+  try {
+    const ndbcUrl = 'https://www.ndbc.noaa.gov/data/latest_obs/44013.txt';
+    const ndbcResponse = await fetch(ndbcUrl);
+    console.log(`NDBC API: ${ndbcResponse.ok ? 'OK' : 'FAILED'} (${ndbcResponse.status})`);
+  } catch (error) {
+    console.log('NDBC API: ERROR -', error.message);
+  }
+}
+
 const app = express();
 
 // Middleware
@@ -158,6 +183,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌊 Woods Hole Water Clarity Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`Server ready to accept connections`);
+  
+  // Test APIs after server starts
+  testAPIs().catch(console.error);
 });
 
 // Handle server errors

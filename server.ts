@@ -40,7 +40,7 @@ const NDBC_BASE = "https://www.ndbc.noaa.gov";
 
 // STATION IDS (Woods Hole area)
 const COOPS_STATION = "8447930"; // Woods Hole - NOAA tide station
-const NDBC_STATION = "BZBM3";    // Woods Hole - WHOI dock wind station
+const NDBC_STATION = "44013";    // Boston buoy - closest reliable NDBC station to Woods Hole
 
 // LOCATION COORDINATES
 const DEFAULT_COORDS = { lat: 41.523, lon: -70.671 }; // Woods Hole center
@@ -514,12 +514,31 @@ async function fetchWaterLevels(): Promise<WaterLevel[]> {
  */
 async function fetchWindData(): Promise<WindData | null> {
   try {
-    // Try JSON endpoint first, fall back to text parsing if needed
-    const url = `${NDBC_BASE}/data/latest_obs/${NDBC_STATION}.txt`;
+    // Try multiple NDBC endpoints for better reliability
+    const urls = [
+      `${NDBC_BASE}/data/latest_obs/${NDBC_STATION}.txt`,
+      `${NDBC_BASE}/data/realtime2/${NDBC_STATION}.txt`
+    ];
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`NDBC API error: ${response.status}`);
+    let response;
+    let lastError;
+    
+    for (const url of urls) {
+      try {
+        console.log(`Trying NDBC URL: ${url}`);
+        response = await fetch(url);
+        if (response.ok) {
+          break;
+        }
+        lastError = new Error(`NDBC API error: ${response.status} for ${url}`);
+      } catch (error) {
+        lastError = error;
+        continue;
+      }
+    }
+    
+    if (!response || !response.ok) {
+      throw lastError || new Error('All NDBC endpoints failed');
     }
 
     const text = await response.text();
@@ -582,11 +601,13 @@ async function fetchPrecipitationData(): Promise<PrecipData | null> {
   }
 
   try {
-    const url = `https://api.openweathermap.org/data/3.0/onecall?` + new URLSearchParams({
+    // Use the free 2.5 API instead of 3.0 which requires subscription
+    const url = `https://api.openweathermap.org/data/2.5/onecall?` + new URLSearchParams({
       lat: DEFAULT_COORDS.lat.toString(),
       lon: DEFAULT_COORDS.lon.toString(),
       appid: OPENWEATHER_API_KEY,
-      units: 'metric'
+      units: 'metric',
+      exclude: 'minutely,alerts' // Reduce response size
     });
 
     const response = await fetch(url);
