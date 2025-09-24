@@ -986,6 +986,39 @@ app.get('/health', (req, res) => {
 // CORE DATA ENDPOINTS
 // ============================================================================
 
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Woods Hole Water Clarity API',
+    version: '1.0.0',
+    description: 'Real-time water clarity forecasting for Woods Hole diving/snorkeling sites',
+    endpoints: [
+      'GET / - API information',
+      'GET /health - Server status and diagnostics',
+      'GET /sites - Site definitions',
+      'GET /now - Current conditions for all sites',
+      'GET /forecast?hours=48 - Hourly forecasts for all sites',
+      'GET /sites/:id/forecast?hours=48 - Forecast for specific site',
+      'GET /rankings?hours=24 - Best sites/times ranking',
+      'GET /observations?siteId=&limit=50 - User observations',
+      'POST /observations - Submit new observation',
+      'GET /calibration - Model weights',
+      'POST /calibration - Update weights (admin)',
+      'GET /raw/tides - Raw tide data',
+      'GET /raw/wind - Raw wind data', 
+      'GET /raw/rain - Raw precipitation data',
+      'GET /raw/waves - Raw wave data',
+      'POST /admin/refresh - Force data refresh (admin)',
+      'POST /admin/stormglass/refresh - Force wave refresh (admin)'
+    ],
+    dataSources: [
+      'NOAA CO-OPS (tides)',
+      'NDBC (wind)',
+      'OpenWeather (precipitation)',
+      'Stormglass (waves)'
+    ]
+  });
+});
+
 app.get('/sites', (req, res) => {
   res.json(SITES);
 });
