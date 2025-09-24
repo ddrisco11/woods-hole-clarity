@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "server.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,6 +13,7 @@
     "server": "npx tsx server.ts",
     "server:dev": "npx tsx watch server.ts",
     "start": "node server.js",
+    "start:ts": "npx tsx server.ts",
     "start:simple": "node server.js"
   },
   "dependencies": {
