@@ -13,6 +13,15 @@ const STORMGLASS_API_KEY = process.env.STORMGLASS_API_KEY || "";
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 const PORT = parseInt(process.env.PORT || "5056");
 
+// Log environment info
+console.log('Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  PORT: PORT,
+  OPENWEATHER_KEY: !!OPENWEATHER_API_KEY,
+  STORMGLASS_KEY: !!STORMGLASS_API_KEY,
+  ADMIN_SECRET: !!ADMIN_SECRET
+});
+
 const app = express();
 
 // Middleware
@@ -136,10 +145,39 @@ app.use((req, res) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
+// Error handling
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  res.status(500).json({
+    error: { message: 'Internal server error' }
+  });
+});
+
+// Start server - bind to all interfaces for Render
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌊 Woods Hole Water Clarity Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Server ready to accept connections`);
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please stop other servers or use a different port.`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', error);
+    process.exit(1);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 export default app;
